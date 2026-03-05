@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 초대 코드
+model InviteCode {
+  id        String    @id @default(uuid())
+  code      String    @unique @db.VarChar(8)
+  createdAt DateTime  @default(now()) @map("created_at")
+  usedBy    String?   @map("used_by")
+  usedAt    DateTime? @map("used_at")
+  isActive  Boolean   @default(true) @map("is_active")
+  expiresAt DateTime  @map("expires_at")
+  teacher   Teacher?  @relation(fields: [usedBy], references: [id])
+
+  @@map("invite_codes")
+}
+
+// 교사
+model Teacher {
+  id          String       @id @default(uuid())
+  email       String       @unique @db.VarChar(255)
+  password    String       @db.VarChar(255)
+  name        String       @db.VarChar(50)
+  school      String?      @db.VarChar(100)
+  role        String       @default("teacher") @db.VarChar(20) // "admin" | "teacher"
+  createdAt   DateTime     @default(now()) @map("created_at")
+  classes     Class[]
+  inviteCode  InviteCode[]
+
+  @@map("teachers")
+}
+
+// 학급
+model Class {
+  id        String   @id @default(uuid())
+  teacherId String   @map("teacher_id")
+  name      String   @db.VarChar(50)  // 예: "4학년 1반"
+  year      Int                         // 예: 2026
+  createdAt DateTime @default(now()) @map("created_at")
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students  Student[]
+  yearendReports YearendReport[]
+
+  @@unique([teacherId, year])
+  @@map("classes")
+}
+
+// 학생
+model Student {
+  id        String   @id @default(uuid())
+  classId   String   @map("class_id")
+  number    Int                         // 출석번호
+  name      String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  writings  Writing[]
+  yearendReports YearendReport[]
+
+  @@unique([classId, number])
+  @@map("students")
+}
+
+// 글 분석 기록
+model Writing {
+  id              String   @id @default(uuid())
+  studentId       String   @map("student_id")
+  round           Int                         // 회차
+  title           String?  @db.VarChar(100)
+  originalText    String   @map("original_text") @db.Text
+  analyzedAt      DateTime @default(now()) @map("analyzed_at")
+  scoreSpelling   Int      @map("score_spelling")
+  scoreSentence   Int      @map("score_sentence")
+  scoreStructure  Int      @map("score_structure")
+  scoreExpression Int      @map("score_expression")
+  scoreTotal      Int      @map("score_total")
+  feedbackTeacher Json     @map("feedback_teacher") @db.JsonB
+  feedbackStudent Json     @map("feedback_student") @db.JsonB
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, round])
+  @@map("writings")
+}
+
+// 학년말 종합 보고서
+model YearendReport {
+  id             String   @id @default(uuid())
+  studentId      String   @map("student_id")
+  classId        String   @map("class_id")
+  year           Int
+  reportTeacher  Json     @map("report_teacher") @db.JsonB
+  reportStudent  Json     @map("report_student") @db.JsonB
+  generatedAt    DateTime @default(now()) @map("generated_at")
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class          Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, year])
+  @@map("yearend_reports")
+}
