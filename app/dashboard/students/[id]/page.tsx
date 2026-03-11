@@ -60,6 +60,61 @@ export default function StudentDetailPage() {
     }
   };
 
+  const handlePrintFeedback = (writing: Writing) => {
+    const fb = writing.feedbackStudent;
+    if (!fb) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>글쓰기 피드백</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; color: #333; line-height: 1.8; max-width: 600px; margin: 0 auto; padding: 20px; }
+  .header { text-align: center; border-bottom: 3px solid #6C5CE7; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { font-size: 22px; color: #6C5CE7; margin: 0 0 4px; }
+  .header p { font-size: 13px; color: #888; margin: 0; }
+  .scores { display: flex; justify-content: center; gap: 12px; margin: 16px 0; }
+  .score-box { background: #F4F3FF; border-radius: 12px; padding: 10px 16px; text-align: center; }
+  .score-box .num { font-size: 20px; font-weight: 800; color: #6C5CE7; }
+  .score-box .label { font-size: 11px; color: #888; }
+  .section { background: #FFFDF7; border: 1px solid #F0E6D0; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .section h3 { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+  .section p { font-size: 13px; margin: 0; }
+  .sparkle h3 { color: #D97706; }
+  .improve h3 { color: #2563EB; }
+  .mission h3 { color: #16A34A; }
+  .heart h3 { color: #DB2777; }
+  .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #aaa; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>${writing.title || `${writing.round}회차 글쓰기`}</h1>
+    <p>${student?.name || ""} · ${writing.round}회차 · ${writing.analyzedAt.slice(0, 10)}</p>
+  </div>
+  <div class="scores">
+    <div class="score-box"><div class="num">${writing.scoreSpelling}</div><div class="label">맞춤법</div></div>
+    <div class="score-box"><div class="num">${writing.scoreSentence}</div><div class="label">문장력</div></div>
+    <div class="score-box"><div class="num">${writing.scoreStructure}</div><div class="label">구조</div></div>
+    <div class="score-box"><div class="num">${writing.scoreExpression}</div><div class="label">표현력</div></div>
+  </div>
+  <div class="section sparkle"><h3>🌟 반짝이는 점</h3><p>${fb.sparkle || ""}</p></div>
+  <div class="section improve"><h3>✍️ 다음엔 이렇게</h3><p>${fb.improve || ""}</p></div>
+  <div class="section mission"><h3>🎯 미션</h3><p>${fb.mission || ""}</p></div>
+  <div class="section heart"><h3>💬 선생님의 마음</h3><p>${fb.heart || ""}</p></div>
+  <div class="footer">글빛 · AI 글쓰기 분석 & 성장 추적</div>
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.onload = () => printWindow.print();
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-400">로딩 중...</p></div>;
   }
@@ -213,7 +268,17 @@ export default function StudentDetailPage() {
                 <h3 className="font-bold text-lg text-gray-800">
                   {selectedWriting.title || `${selectedWriting.round}회차`}
                 </h3>
-                <button onClick={() => setSelectedWriting(null)} className="text-gray-400 text-xl">×</button>
+                <div className="flex items-center gap-2">
+                  {selectedWriting.feedbackStudent && (
+                    <button
+                      onClick={() => handlePrintFeedback(selectedWriting)}
+                      className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      🖨️ 인쇄
+                    </button>
+                  )}
+                  <button onClick={() => setSelectedWriting(null)} className="text-gray-400 text-xl">×</button>
+                </div>
               </div>
 
               {/* Student Feedback */}

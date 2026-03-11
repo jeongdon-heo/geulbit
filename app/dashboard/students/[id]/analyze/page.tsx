@@ -116,6 +116,61 @@ export default function AnalyzePage() {
     }
   };
 
+  const handlePrintFeedback = () => {
+    const fb = analysis?.feedbackStudent;
+    if (!fb) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>글쓰기 피드백</title>
+<style>
+  @page { size: A4; margin: 20mm; }
+  body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; color: #333; line-height: 1.8; max-width: 600px; margin: 0 auto; padding: 20px; }
+  .header { text-align: center; border-bottom: 3px solid #6C5CE7; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { font-size: 22px; color: #6C5CE7; margin: 0 0 4px; }
+  .header p { font-size: 13px; color: #888; margin: 0; }
+  .scores { display: flex; justify-content: center; gap: 12px; margin: 16px 0; }
+  .score-box { background: #F4F3FF; border-radius: 12px; padding: 10px 16px; text-align: center; }
+  .score-box .num { font-size: 20px; font-weight: 800; color: #6C5CE7; }
+  .score-box .label { font-size: 11px; color: #888; }
+  .section { background: #FFFDF7; border: 1px solid #F0E6D0; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .section h3 { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+  .section p { font-size: 13px; margin: 0; }
+  .sparkle h3 { color: #D97706; }
+  .improve h3 { color: #2563EB; }
+  .mission h3 { color: #16A34A; }
+  .heart h3 { color: #DB2777; }
+  .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #aaa; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>${analysis?.title || "글쓰기 피드백"}</h1>
+    <p>${analysis?.round || ""}회차 분석 결과</p>
+  </div>
+  <div class="scores">
+    <div class="score-box"><div class="num">${analysis?.scores.spelling}</div><div class="label">맞춤법</div></div>
+    <div class="score-box"><div class="num">${analysis?.scores.sentence}</div><div class="label">문장력</div></div>
+    <div class="score-box"><div class="num">${analysis?.scores.structure}</div><div class="label">구조</div></div>
+    <div class="score-box"><div class="num">${analysis?.scores.expression}</div><div class="label">표현력</div></div>
+  </div>
+  <div class="section sparkle"><h3>🌟 반짝이는 점</h3><p>${fb.sparkle || ""}</p></div>
+  <div class="section improve"><h3>✍️ 다음엔 이렇게</h3><p>${fb.improve || ""}</p></div>
+  <div class="section mission"><h3>🎯 미션</h3><p>${fb.mission || ""}</p></div>
+  <div class="section heart"><h3>💬 선생님의 마음</h3><p>${fb.heart || ""}</p></div>
+  <div class="footer">글빛 · AI 글쓰기 분석 & 성장 추적</div>
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.onload = () => printWindow.print();
+  };
+
   const getConfidenceStyle = (conf: number) => {
     if (conf >= 0.85) return "";
     if (conf >= 0.7) return "bg-yellow-100 text-yellow-800 px-1 rounded";
@@ -356,7 +411,15 @@ export default function AnalyzePage() {
 
             {/* Student Card Preview */}
             <div className="bg-yellow-50 rounded-2xl p-5 shadow-sm border border-yellow-200 mb-4">
-              <h3 className="font-bold text-yellow-800 mb-3">💌 학생용 피드백</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-yellow-800">💌 학생용 피드백</h3>
+                <button
+                  onClick={handlePrintFeedback}
+                  className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  🖨️ 인쇄
+                </button>
+              </div>
               <div className="space-y-3 text-sm text-gray-700">
                 <div>
                   <span className="font-bold text-yellow-600">🌟 반짝이는 점: </span>
