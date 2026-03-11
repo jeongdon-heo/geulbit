@@ -52,7 +52,7 @@ export default function AnalyzePage() {
 
       const base64 = dataUrl.split(",")[1];
       const mimeType = file.type;
-      setImageData({ base64, mimeType });
+      setImageData({ base64: base64, mimeType });
     };
     reader.readAsDataURL(file);
   };

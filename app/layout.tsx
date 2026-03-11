@@ -10,9 +10,11 @@ export const metadata: Metadata = {
   },
   description: "초등학생의 글쓰기를 AI로 분석하고 성장을 추적하는 교육 도구 · GeulBit",
   appleWebApp: {
-    capable: true,
     statusBarStyle: "default",
     title: "글빛",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
   formatDetection: {
     telephone: false,

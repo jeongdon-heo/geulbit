@@ -10,7 +10,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { imageBase64, mimeType } = await req.json();
+    const body = await req.json();
+    const imageBase64 = body.imageBase64 || body.base64;
+    const mimeType = body.mimeType;
 
     if (!imageBase64 || !mimeType) {
       return NextResponse.json({ error: "이미지 데이터가 필요합니다." }, { status: 400 });
