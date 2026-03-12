@@ -143,7 +143,6 @@ export default function AnalyzePage() {
   .section p { font-size: 13px; margin: 0; }
   .sparkle h3 { color: #D97706; }
   .improve h3 { color: #2563EB; }
-  .mission h3 { color: #16A34A; }
   .heart h3 { color: #DB2777; }
   .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #aaa; }
   @media print { body { padding: 0; } }
@@ -162,7 +161,6 @@ export default function AnalyzePage() {
   </div>
   <div class="section sparkle"><h3>🌟 반짝이는 점</h3><p>${fb.sparkle || ""}</p></div>
   <div class="section improve"><h3>✍️ 다음엔 이렇게</h3><p>${fb.improve || ""}</p></div>
-  <div class="section mission"><h3>🎯 미션</h3><p>${fb.mission || ""}</p></div>
   <div class="section heart"><h3>💬 선생님의 마음</h3><p>${fb.heart || ""}</p></div>
   <div class="footer">글빛 · AI 글쓰기 분석 & 성장 추적</div>
 </body>
@@ -428,10 +426,6 @@ export default function AnalyzePage() {
                 <div>
                   <span className="font-bold text-blue-600">✍️ 다음엔 이렇게: </span>
                   {analysis.feedbackStudent?.improve}
-                </div>
-                <div>
-                  <span className="font-bold text-green-600">🎯 미션: </span>
-                  {analysis.feedbackStudent?.mission}
                 </div>
                 <div>
                   <span className="font-bold text-pink-600">💬 선생님 마음: </span>

@@ -87,7 +87,6 @@ export default function StudentDetailPage() {
   .section p { font-size: 13px; margin: 0; }
   .sparkle h3 { color: #D97706; }
   .improve h3 { color: #2563EB; }
-  .mission h3 { color: #16A34A; }
   .heart h3 { color: #DB2777; }
   .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #aaa; }
   @media print { body { padding: 0; } }
@@ -106,7 +105,6 @@ export default function StudentDetailPage() {
   </div>
   <div class="section sparkle"><h3>🌟 반짝이는 점</h3><p>${fb.sparkle || ""}</p></div>
   <div class="section improve"><h3>✍️ 다음엔 이렇게</h3><p>${fb.improve || ""}</p></div>
-  <div class="section mission"><h3>🎯 미션</h3><p>${fb.mission || ""}</p></div>
   <div class="section heart"><h3>💬 선생님의 마음</h3><p>${fb.heart || ""}</p></div>
   <div class="footer">글빛 · AI 글쓰기 분석 & 성장 추적</div>
 </body>
@@ -291,10 +289,6 @@ export default function StudentDetailPage() {
                   <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                     <div className="font-bold text-blue-700 mb-1">✍️ 다음엔 이렇게</div>
                     <p className="text-gray-700 leading-relaxed">{selectedWriting.feedbackStudent.improve}</p>
-                  </div>
-                  <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                    <div className="font-bold text-green-700 mb-1">🎯 미션</div>
-                    <p className="text-gray-700 leading-relaxed">{selectedWriting.feedbackStudent.mission}</p>
                   </div>
                   <div className="bg-pink-50 rounded-xl p-4 border border-pink-100">
                     <div className="font-bold text-pink-700 mb-1">💬 선생님의 마음</div>
