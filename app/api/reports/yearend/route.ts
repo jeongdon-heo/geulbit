@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { generateYearendReport } from "@/lib/gemini";
+import { getAI, getProvider } from "@/lib/ai";
 import prisma from "@/lib/prisma";
 
 // POST: 학년말 총평 생성
@@ -12,7 +12,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { studentId } = await req.json();
+    const body = await req.json();
+    const { studentId } = body;
+    const provider = getProvider(body.provider);
+    const apiKey =
+      (provider === "claude"
+        ? req.headers.get("x-anthropic-api-key")
+        : req.headers.get("x-gemini-api-key")) || undefined;
     const teacherId = (session.user as any).id;
 
     // 학생 + 학급 확인
@@ -38,11 +44,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Gemini 총평 생성
-    const result = await generateYearendReport(
+    // AI 총평 생성
+    const result = await getAI(provider).generateYearendReport(
       student.name,
       student.class.name,
-      writings
+      writings,
+      apiKey
     );
 
     // DB 저장 (upsert)

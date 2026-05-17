@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { getApiKeyHeader } from "@/lib/api-keys";
 
 interface Writing {
   id: string;
@@ -26,6 +27,7 @@ export default function StudentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedWriting, setSelectedWriting] = useState<Writing | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportProvider, setReportProvider] = useState<"gemini" | "claude">("gemini");
 
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/students/${studentId}/writings`);
@@ -43,8 +45,8 @@ export default function StudentDetailPage() {
     try {
       const res = await fetch("/api/reports/yearend", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId }),
+        headers: { "Content-Type": "application/json", ...getApiKeyHeader(reportProvider) },
+        body: JSON.stringify({ studentId, provider: reportProvider }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -249,13 +251,45 @@ export default function StudentDetailPage() {
 
         {/* Yearend Report Button */}
         {writings.length >= 3 && (
-          <button
-            onClick={handleGenerateYearend}
-            disabled={generatingReport}
-            className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-bold text-sm shadow-lg disabled:opacity-50"
-          >
-            {generatingReport ? "✨ 총평 생성 중..." : "📊 학년말 종합 보고서 생성"}
-          </button>
+          <div className="space-y-2">
+            <div className="bg-white rounded-2xl p-3 border border-gray-100 flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-500 px-1">AI 모델</span>
+              <div className="flex gap-1.5 flex-1">
+                <button
+                  type="button"
+                  onClick={() => setReportProvider("gemini")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                    reportProvider === "gemini"
+                      ? "bg-purple-500 text-white border-purple-500"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  ✨ Gemini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportProvider("claude")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                    reportProvider === "claude"
+                      ? "bg-purple-500 text-white border-purple-500"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  🤖 Claude
+                </button>
+              </div>
+              <Link href="/dashboard/settings" className="text-xs text-purple-500 hover:underline px-1">
+                🔑
+              </Link>
+            </div>
+            <button
+              onClick={handleGenerateYearend}
+              disabled={generatingReport}
+              className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-bold text-sm shadow-lg disabled:opacity-50"
+            >
+              {generatingReport ? "✨ 총평 생성 중..." : "📊 학년말 종합 보고서 생성"}
+            </button>
+          </div>
         )}
 
         {/* Writing Detail Modal */}

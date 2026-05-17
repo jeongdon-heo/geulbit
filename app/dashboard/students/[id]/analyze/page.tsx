@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { getApiKeyHeader } from "@/lib/api-keys";
 
 type Step = "upload" | "ocr" | "review" | "analyzing" | "result";
 
@@ -30,6 +31,7 @@ export default function AnalyzePage() {
 
   const [step, setStep] = useState<Step>("upload");
   const [title, setTitle] = useState("");
+  const [provider, setProvider] = useState<"gemini" | "claude">("gemini");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
@@ -66,8 +68,8 @@ export default function AnalyzePage() {
     try {
       const res = await fetch("/api/analyze/ocr", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(imageData),
+        headers: { "Content-Type": "application/json", ...getApiKeyHeader(provider) },
+        body: JSON.stringify({ ...imageData, provider }),
       });
 
       if (!res.ok) throw new Error((await res.json()).error);
@@ -95,11 +97,12 @@ export default function AnalyzePage() {
     try {
       const res = await fetch("/api/analyze/feedback", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getApiKeyHeader(provider) },
         body: JSON.stringify({
           studentId,
           text: textToAnalyze,
           title: title || null,
+          provider,
         }),
       });
 
@@ -226,6 +229,39 @@ export default function AnalyzePage() {
                 placeholder="예: 과학관 체험학습"
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-purple-500 outline-none text-sm"
               />
+            </div>
+
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-gray-500">AI 모델 선택</label>
+                <Link href="/dashboard/settings" className="text-xs text-purple-500 hover:underline">
+                  🔑 키 설정
+                </Link>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProvider("gemini")}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                    provider === "gemini"
+                      ? "bg-purple-500 text-white border-purple-500 shadow-md shadow-purple-200"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  ✨ Gemini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvider("claude")}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                    provider === "claude"
+                      ? "bg-purple-500 text-white border-purple-500 shadow-md shadow-purple-200"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  🤖 Claude
+                </button>
+              </div>
             </div>
 
             <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
@@ -362,7 +398,7 @@ export default function AnalyzePage() {
         {step === "analyzing" && (
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
             <div className="text-5xl mb-4 animate-bounce">✨</div>
-            <h2 className="text-lg font-bold text-gray-800 mb-2">Gemini가 분석 중...</h2>
+            <h2 className="text-lg font-bold text-gray-800 mb-2">{provider === "claude" ? "Claude" : "Gemini"}가 분석 중...</h2>
             <p className="text-xs text-gray-400 mb-6">맞춤법, 문장력, 구조, 표현력을 분석하고 있어요</p>
             <div className="w-48 h-2 bg-gray-100 rounded-full mx-auto overflow-hidden">
               <div className="h-full bg-gradient-to-r from-purple-500 to-purple-400 rounded-full animate-pulse" style={{ width: "70%" }} />

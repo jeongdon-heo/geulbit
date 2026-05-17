@@ -106,6 +106,12 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/settings"
+              className="px-3 py-1.5 text-xs font-semibold text-purple-500 bg-purple-50 rounded-lg hover:bg-purple-100"
+            >
+              🔑 키 설정
+            </Link>
             {user?.role === "admin" && (
               <Link
                 href="/admin"

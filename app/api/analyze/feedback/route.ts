@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { analyzeWriting } from "@/lib/gemini";
+import { getAI, getProvider } from "@/lib/ai";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -11,7 +11,13 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { studentId, text, title } = await req.json();
+    const body = await req.json();
+    const { studentId, text, title } = body;
+    const provider = getProvider(body.provider);
+    const apiKey =
+      (provider === "claude"
+        ? req.headers.get("x-anthropic-api-key")
+        : req.headers.get("x-gemini-api-key")) || undefined;
     const teacherId = (session.user as any).id;
 
     // 학생 확인 + 내 학급인지 검증
@@ -47,8 +53,8 @@ export async function POST(req: Request) {
         }
       : null;
 
-    // Gemini 분석 호출
-    const analysis = await analyzeWriting(text, student.name, round, previousScores);
+    // AI 분석 호출
+    const analysis = await getAI(provider).analyzeWriting(text, student.name, round, previousScores, apiKey);
 
     const { scores, feedback_teacher, feedback_student } = analysis;
     const total = Math.round(

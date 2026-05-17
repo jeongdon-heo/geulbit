@@ -1,14 +1,28 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
-function getModel(apiKey?: string) {
-  const key = apiKey || process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("Gemini API 키가 설정되지 않았습니다.");
-  return new GoogleGenerativeAI(key).getGenerativeModel({ model: "gemini-2.0-flash" });
+const MODEL = "claude-opus-4-7";
+
+function getClient(apiKey?: string) {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("Claude API 키가 설정되지 않았습니다.");
+  return new Anthropic({ apiKey: key });
+}
+
+function parseJsonResponse(text: string) {
+  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  return JSON.parse(cleaned);
+}
+
+function extractText(response: Anthropic.Message): string {
+  for (const block of response.content) {
+    if (block.type === "text") return block.text;
+  }
+  throw new Error("Claude 응답에서 텍스트를 찾을 수 없습니다.");
 }
 
 // ============ OCR: 사진 → 텍스트 인식 ============
 export async function recognizeHandwriting(imageBase64: string, mimeType: string, apiKey?: string) {
-  const model = getModel(apiKey);
+  const client = getClient(apiKey);
   const prompt = `당신은 초등학생 손글씨 인식 전문가입니다.
 이미지에서 학생이 손으로 쓴 글을 정확하게 텍스트로 변환해주세요.
 
@@ -31,21 +45,29 @@ export async function recognizeHandwriting(imageBase64: string, mimeType: string
 }`;
 
   try {
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: mimeType,
-          data: imageBase64,
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+                data: imageBase64,
+              },
+            },
+            { type: "text", text: prompt },
+          ],
         },
-      },
-    ]);
-
-    const text = result.response.text();
-    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned);
+      ],
+    });
+    return parseJsonResponse(extractText(response));
   } catch (error) {
-    console.error("OCR Error:", error);
+    console.error("Claude OCR Error:", error);
     throw new Error("글자 인식에 실패했습니다. 사진을 다시 확인해주세요.");
   }
 }
@@ -58,7 +80,7 @@ export async function analyzeWriting(
   previousScores?: { spelling: number; sentence: number; structure: number; expression: number } | null,
   apiKey?: string
 ) {
-  const model = getModel(apiKey);
+  const client = getClient(apiKey);
   const previousContext = previousScores
     ? `\n이전 회차(${round - 1}회차) 점수: 맞춤법 ${previousScores.spelling}, 문장 ${previousScores.sentence}, 구조 ${previousScores.structure}, 표현력 ${previousScores.expression}`
     : "\n이전 분석 기록이 없습니다 (첫 회차).";
@@ -128,12 +150,14 @@ ${text}
 }`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned);
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      messages: [{ role: "user", content: prompt }],
+    });
+    return parseJsonResponse(extractText(response));
   } catch (error) {
-    console.error("Analysis Error:", error);
+    console.error("Claude Analysis Error:", error);
     throw new Error("글 분석에 실패했습니다. 다시 시도해주세요.");
   }
 }
@@ -156,7 +180,7 @@ export async function generateYearendReport(
   }>,
   apiKey?: string
 ) {
-  const model = getModel(apiKey);
+  const client = getClient(apiKey);
   const writingSummaries = writings.map((w) => ({
     round: w.round,
     title: w.title,
@@ -212,12 +236,14 @@ ${JSON.stringify(writingSummaries, null, 2)}
 }`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(cleaned);
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      messages: [{ role: "user", content: prompt }],
+    });
+    return parseJsonResponse(extractText(response));
   } catch (error) {
-    console.error("Yearend Report Error:", error);
+    console.error("Claude Yearend Report Error:", error);
     throw new Error("학년말 총평 생성에 실패했습니다. 다시 시도해주세요.");
   }
 }
