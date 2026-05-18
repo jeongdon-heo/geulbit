@@ -11,3 +11,4 @@ public/sw*
 public/swe-worker*
 
 .vercel
+.claude/

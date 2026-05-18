@@ -60,6 +60,7 @@ model Student {
   createdAt DateTime @default(now()) @map("created_at")
   class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   writings  Writing[]
+  notes     Note[]
   yearendReports YearendReport[]
 
   @@unique([classId, number])
@@ -85,6 +86,33 @@ model Writing {
 
   @@unique([studentId, round])
   @@map("writings")
+}
+
+// 글쓰기 노트 (아침활동/교과/편지 등 비정기 누적 기록)
+model Note {
+  id              String    @id @default(uuid())
+  studentId       String    @map("student_id")
+  type            String    @db.VarChar(20)  // "thought" | "pmi" | "weekend" | "subject" | "letter" | "etc"
+  title           String?   @db.VarChar(100)
+  content         String    @db.Text
+  writtenAt       DateTime  @map("written_at")  // 글 작성일(아침활동 날짜)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // 선택적 분석 결과
+  analyzedAt      DateTime? @map("analyzed_at")
+  scoreSpelling   Int?      @map("score_spelling")
+  scoreSentence   Int?      @map("score_sentence")
+  scoreStructure  Int?      @map("score_structure")
+  scoreExpression Int?      @map("score_expression")
+  scoreTotal      Int?      @map("score_total")
+  feedbackTeacher Json?     @map("feedback_teacher") @db.JsonB
+  feedbackStudent Json?     @map("feedback_student") @db.JsonB
+
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, writtenAt])
+  @@index([studentId, type])
+  @@map("notes")
 }
 
 // 학년말 종합 보고서

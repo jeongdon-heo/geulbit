@@ -18,27 +18,97 @@ interface Writing {
   feedbackStudent: any;
 }
 
+interface Note {
+  id: string;
+  type: string;
+  title: string | null;
+  content: string;
+  writtenAt: string;
+  createdAt: string;
+  analyzedAt: string | null;
+  scoreSpelling: number | null;
+  scoreSentence: number | null;
+  scoreStructure: number | null;
+  scoreExpression: number | null;
+  scoreTotal: number | null;
+  feedbackTeacher: any;
+  feedbackStudent: any;
+}
+
+const NOTE_TYPE_META: Record<string, { label: string; emoji: string; color: string }> = {
+  thought:  { label: "생각일지",     emoji: "💭", color: "bg-blue-50 text-blue-600 border-blue-200" },
+  pmi:      { label: "PMI 글쓰기",   emoji: "⚖️", color: "bg-teal-50 text-teal-600 border-teal-200" },
+  weekend:  { label: "주말 이야기",  emoji: "🌅", color: "bg-orange-50 text-orange-600 border-orange-200" },
+  subject:  { label: "교과 글쓰기",  emoji: "📚", color: "bg-purple-50 text-purple-600 border-purple-200" },
+  letter:   { label: "편지",         emoji: "✉️", color: "bg-pink-50 text-pink-600 border-pink-200" },
+  etc:      { label: "기타",         emoji: "📝", color: "bg-gray-50 text-gray-600 border-gray-200" },
+};
+
 export default function StudentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const studentId = params.id as string;
   const [student, setStudent] = useState<any>(null);
   const [writings, setWritings] = useState<Writing[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesFilter, setNotesFilter] = useState<string>("all");
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [analyzingNoteId, setAnalyzingNoteId] = useState<string | null>(null);
+  const [noteProvider, setNoteProvider] = useState<"gemini" | "claude">("gemini");
   const [loading, setLoading] = useState(true);
   const [selectedWriting, setSelectedWriting] = useState<Writing | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportProvider, setReportProvider] = useState<"gemini" | "claude">("gemini");
 
   const fetchData = useCallback(async () => {
-    const res = await fetch(`/api/students/${studentId}/writings`);
-    if (!res.ok) { router.push("/dashboard"); return; }
-    const data = await res.json();
-    setStudent(data.student);
-    setWritings(data.writings);
+    const [wRes, nRes] = await Promise.all([
+      fetch(`/api/students/${studentId}/writings`),
+      fetch(`/api/students/${studentId}/notes`),
+    ]);
+    if (!wRes.ok) { router.push("/dashboard"); return; }
+    const wData = await wRes.json();
+    setStudent(wData.student);
+    setWritings(wData.writings);
+    if (nRes.ok) {
+      const nData = await nRes.json();
+      setNotes(nData.notes || []);
+    }
     setLoading(false);
   }, [studentId, router]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleDeleteNote = async (note: Note) => {
+    const meta = NOTE_TYPE_META[note.type] || NOTE_TYPE_META.etc;
+    const label = note.title || `${meta.label} (${note.writtenAt.slice(0, 10)})`;
+    if (!confirm(`'${label}' 노트를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    const res = await fetch(`/api/notes/${note.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setExpandedNoteId(null);
+      fetchData();
+    } else {
+      alert("삭제에 실패했습니다.");
+    }
+  };
+
+  const handleAnalyzeNote = async (note: Note) => {
+    setAnalyzingNoteId(note.id);
+    try {
+      const res = await fetch(`/api/notes/${note.id}/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getApiKeyHeader(noteProvider) },
+        body: JSON.stringify({ provider: noteProvider }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "분석에 실패했습니다.");
+        return;
+      }
+      await fetchData();
+    } finally {
+      setAnalyzingNoteId(null);
+    }
+  };
 
   const handleGenerateYearend = async () => {
     setGeneratingReport(true);
@@ -128,12 +198,20 @@ export default function StudentDetailPage() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/dashboard" className="text-purple-500 font-semibold text-sm">← 돌아가기</Link>
-          <Link
-            href={`/dashboard/students/${studentId}/analyze`}
-            className="px-3 py-1.5 bg-purple-500 text-white text-xs font-bold rounded-lg"
-          >
-            📷 새 글 분석
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/dashboard/students/${studentId}/notes/new`}
+              className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg hover:bg-purple-100"
+            >
+              📝 노트
+            </Link>
+            <Link
+              href={`/dashboard/students/${studentId}/analyze`}
+              className="px-3 py-1.5 bg-purple-500 text-white text-xs font-bold rounded-lg"
+            >
+              📷 새 글 분석
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -248,6 +326,173 @@ export default function StudentDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Writing Notes Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+          <div className="px-5 py-4 flex items-center justify-between border-b border-gray-50">
+            <h3 className="font-bold text-gray-800">📝 글쓰기 노트</h3>
+            <Link
+              href={`/dashboard/students/${studentId}/notes/new`}
+              className="px-3 py-1.5 text-xs font-semibold text-purple-500 bg-purple-50 rounded-lg hover:bg-purple-100"
+            >
+              + 새 노트
+            </Link>
+          </div>
+
+          {/* Type filter */}
+          {notes.length > 0 && (
+            <div className="px-5 py-3 border-b border-gray-50 flex gap-1.5 overflow-x-auto">
+              <button
+                onClick={() => setNotesFilter("all")}
+                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap border ${
+                  notesFilter === "all"
+                    ? "bg-purple-500 text-white border-purple-500"
+                    : "bg-white text-gray-500 border-gray-200"
+                }`}
+              >
+                전체 {notes.length}
+              </button>
+              {Object.entries(NOTE_TYPE_META).map(([key, meta]) => {
+                const count = notes.filter((n) => n.type === key).length;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setNotesFilter(key)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap border ${
+                      notesFilter === key
+                        ? "bg-purple-500 text-white border-purple-500"
+                        : "bg-white text-gray-500 border-gray-200"
+                    }`}
+                  >
+                    {meta.emoji} {meta.label} {count}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {notes.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="text-4xl mb-2">📝</div>
+              <p className="text-sm text-gray-400 mb-3">아직 등록된 노트가 없어요.</p>
+              <p className="text-xs text-gray-400 mb-4">아침활동·교과·편지 등 일상 글을 누적해보세요.</p>
+              <Link
+                href={`/dashboard/students/${studentId}/notes/new`}
+                className="inline-block px-4 py-2 text-sm font-semibold text-purple-500 bg-purple-50 rounded-lg"
+              >
+                첫 노트 만들기
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {notes
+                .filter((n) => notesFilter === "all" || n.type === notesFilter)
+                .map((n) => {
+                  const meta = NOTE_TYPE_META[n.type] || NOTE_TYPE_META.etc;
+                  const isExpanded = expandedNoteId === n.id;
+                  const isAnalyzing = analyzingNoteId === n.id;
+                  return (
+                    <div key={n.id}>
+                      <div
+                        className="px-5 py-3.5 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setExpandedNoteId(isExpanded ? null : n.id)}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${meta.color} whitespace-nowrap`}>
+                            {meta.emoji} {meta.label}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm text-gray-800 truncate">
+                              {n.title || n.content.slice(0, 24) + (n.content.length > 24 ? "…" : "")}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {n.writtenAt.slice(0, 10)}
+                              {n.scoreTotal !== null && ` · 분석 ${n.scoreTotal}점`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          {n.scoreTotal !== null && (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${
+                              n.scoreTotal >= 80 ? "bg-green-50 text-green-600 border-green-200" :
+                              n.scoreTotal >= 60 ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
+                              "bg-red-50 text-red-600 border-red-200"
+                            }`}>
+                              {n.scoreTotal}
+                            </div>
+                          )}
+                          <span className="text-gray-300 text-xs">{isExpanded ? "▲" : "▼"}</span>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="px-5 pb-4 bg-gray-50/50 space-y-3">
+                          {/* Content */}
+                          <div className="bg-white rounded-xl p-4 border border-gray-100">
+                            <div className="text-[10px] font-semibold text-gray-400 mb-1">📄 내용</div>
+                            <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap">{n.content}</p>
+                          </div>
+
+                          {/* Analysis result (if any) */}
+                          {n.feedbackStudent && (
+                            <div className="space-y-2">
+                              <div className="bg-yellow-50 rounded-xl p-3 border border-yellow-100">
+                                <div className="text-xs font-bold text-yellow-700 mb-1">🌟 반짝이는 점</div>
+                                <p className="text-xs text-gray-700 leading-6">{n.feedbackStudent.sparkle}</p>
+                              </div>
+                              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                                <div className="text-xs font-bold text-blue-700 mb-1">✍️ 다음엔 이렇게</div>
+                                <p className="text-xs text-gray-700 leading-6">{n.feedbackStudent.improve}</p>
+                              </div>
+                              <div className="bg-pink-50 rounded-xl p-3 border border-pink-100">
+                                <div className="text-xs font-bold text-pink-700 mb-1">💬 선생님의 마음</div>
+                                <p className="text-xs text-gray-700 leading-6">{n.feedbackStudent.heart}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2">
+                            {!n.analyzedAt && (
+                              <>
+                                <select
+                                  value={noteProvider}
+                                  onChange={(e) => setNoteProvider(e.target.value as "gemini" | "claude")}
+                                  className="text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white"
+                                >
+                                  <option value="gemini">✨ Gemini</option>
+                                  <option value="claude">🤖 Claude</option>
+                                </select>
+                                <button
+                                  onClick={() => handleAnalyzeNote(n)}
+                                  disabled={isAnalyzing}
+                                  className="flex-1 py-2 rounded-lg bg-purple-500 text-white text-xs font-bold disabled:bg-purple-300"
+                                >
+                                  {isAnalyzing ? "✨ 분석 중..." : "🔍 이 글 분석"}
+                                </button>
+                              </>
+                            )}
+                            {n.analyzedAt && (
+                              <div className="flex-1 text-[11px] text-gray-400">
+                                분석 완료: {n.analyzedAt.slice(0, 10)}
+                              </div>
+                            )}
+                            <button
+                              onClick={() => handleDeleteNote(n)}
+                              className="px-3 py-2 rounded-lg border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 text-xs"
+                            >
+                              ✕ 삭제
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
 
         {/* Yearend Report Button */}
         {writings.length >= 3 && (
