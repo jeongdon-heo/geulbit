@@ -54,6 +54,26 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteStudent = async (student: Student) => {
+    const hasWritings = student.writings.length > 0;
+    const message = hasWritings
+      ? `${student.number}번 ${student.name} 학생을 삭제할까요?\n\n⚠️ 분석 기록 ${student.writings.length}개도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.`
+      : `${student.number}번 ${student.name} 학생을 삭제할까요?`;
+    if (!confirm(message)) return;
+
+    const res = await fetch("/api/students", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: student.id }),
+    });
+    if (res.ok) {
+      fetchClass();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "삭제에 실패했습니다.");
+    }
+  };
+
   const handleAddStudents = async () => {
     if (!classData || !studentInput.trim()) return;
     const lines = studentInput.trim().split("\n").filter(Boolean);
@@ -266,6 +286,14 @@ export default function DashboardPage() {
                           >
                             📷 분석
                           </Link>
+                          <button
+                            onClick={() => handleDeleteStudent(s)}
+                            title="학생 삭제"
+                            aria-label={`${s.name} 학생 삭제`}
+                            className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
                     );
